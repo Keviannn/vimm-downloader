@@ -16,9 +16,9 @@ Also, right now, it may not handle all possible cases as I have made it from my 
 
 ---
 
-## ✨ Overview
+## Overview
 
-Vimm's Lair serves ROMs behind a vault page that points to a dedicated download server URL (`dlX.vimm.net`). This script automates the whole flow:
+Vimm's Lair serves ROMs through a vault page that points to a dedicated download server URL (`dlX.vimm.net`). This script automates the whole flow:
 
 1. Fetches the vault page.
 2. Extracts the `MEDIA_ID` and `SERVER_ID` of the download server from the page.
@@ -29,7 +29,7 @@ Vimm's Lair serves ROMs behind a vault page that points to a dedicated download 
 
 ---
 
-## 🚀 Use Case
+## Use Case
 
 You have a ROM library organized by platform (e.g. `/home/user/emu/library/roms/n64`). You find the game you want on Vimm's Lair and copy the vault ID from the URL:
 
@@ -79,7 +79,7 @@ Only the `.zip` (or `.7z`) file is kept; the extracted ROM is verified and then 
 
 ---
 
-## 📦 Requirements
+## Requirements
 
 The script relies on the following programs being installed and available in `PATH`:
 
@@ -100,7 +100,7 @@ The script relies on the following programs being installed and available in `PA
 > **Note:** `grep` must be the GNU version supporting the `-P` (Perl regex) option, e.g. `\K`.
 
 
-## ⚙️ Configuration
+## Configuration
 
 Edit the variable at the top of the script to point to your ROM library:
 
@@ -110,7 +110,7 @@ BASE_DIR="/path/to/library/roms"
 
 ---
 
-## ⚠️ Assumptions
+## Assumptions
 
 The script is tailored to Vimm's Lair as it exists today. It assumes:
 
