@@ -198,7 +198,7 @@ if [ -f "$FILENAME" ]; then
             fi
             ;;
         7z)
-            7z x "$FILENAME" -o $TEMP -y
+            7z x "$FILENAME" -o$TEMP -y
             if [ $? -ne 0 ]; then
                 clean3
                 error "Could not extract files!"
