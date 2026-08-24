@@ -132,7 +132,7 @@ elif [ -z "$FILESIZE" ]; then
     exit 1
 fi
 
-FILESIZE_SIMPLE=$(numfmt --to=iec --suffix=iB --format="%.2f" "$FILESIZE" | sed 's/\([0-9]*\.[0-9]\).*/\1MiB/') # Truncate to 1 decimal as pv
+FILESIZE_SIMPLE=$(numfmt --to=iec --suffix=iB --format="%.2f" "$FILESIZE" | sed 's/\([0-9]*\.[0-9]\)[0-9]*\([a-zA-Z]*\)/\1\2/') # Truncate to 1 decimal as pv
 
 msg "${BOLD}${YELLOW}$FILENAME $FILESIZE_SIMPLE${RESET}\n"
 
