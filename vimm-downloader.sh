@@ -132,7 +132,21 @@ elif [ -z "$FILESIZE" ]; then
     exit 1
 fi
 
-FILESIZE_SIMPLE=$(numfmt --to=iec --suffix=iB --format="%.2f" "$FILESIZE" | sed 's/\([0-9]*\.[0-9]\)[0-9]*\([a-zA-Z]*\)/\1\2/') # Truncate to 1 decimal as pv
+SIZE_VALUE=$(numfmt --to=iec --suffix=iB --format="%.2f" "$FILESIZE")
+
+VALUE="${SIZE_VALUE%%[a-zA-Z]*}"    # Remove longer letter sufix
+SUFFIX="${SIZE_VALUE##*[0-9.]}"     # Remove longer number prefix
+DEC="${VALUE#*.}"                   # Remove shorter prefix until .
+INT="${VALUE%%.*}"                  # Remove longer post .
+
+# ≥100s no decimals, ≥10s one, <10s none
+if [ "$INT" -ge 100 ]; then
+    FILESIZE_SIMPLE="${INT}${SUFFIX}"
+elif [ "$INT" -ge 10 ]; then
+    FILESIZE_SIMPLE="${INT}.${DEC:0:1}${SUFFIX}"
+else
+    FILESIZE_SIMPLE="${VALUE}${SUFFIX}"
+fi
 
 msg "${BOLD}${YELLOW}$FILENAME $FILESIZE_SIMPLE${RESET}\n"
 
@@ -190,7 +204,7 @@ if [ -f "$FILENAME" ]; then
 
     case ${FILENAME##*.} in
         zip)
-            unzip -q -o "$FILENAME" -d $TEMP
+            unzip -qq -j -o "$FILENAME" -d $TEMP
             if [ $? -ne 0 ]; then
                 clean3
                 error "Could not extract files!"
@@ -198,7 +212,7 @@ if [ -f "$FILENAME" ]; then
             fi
             ;;
         7z)
-            7z x "$FILENAME" -o$TEMP -y
+            7z e "$FILENAME" -o$TEMP -y -bso0 -bsp0
             if [ $? -ne 0 ]; then
                 clean3
                 error "Could not extract files!"
@@ -213,11 +227,11 @@ if [ -f "$FILENAME" ]; then
     esac
 
 
-    EXTRACTED_FILE=$(find $TEMP -type f -name "${FILENAME%.*}.*" | head -n 1)
+    EXTRACTED_FILES=$(find "$TEMP" -type f ! -name "$VIMM_FILE")
 
-    if [ -z "$EXTRACTED_FILE" ]; then
+    if [ -z "$EXTRACTED_FILES" ]; then
         clean3
-        error "Extracted file $EXTRACTED_FILE not found!"
+        error "Extracted files $EXTRACTED_FILES not found!"
         exit 1
     fi
 
@@ -228,30 +242,40 @@ if [ -f "$FILENAME" ]; then
     fi
 
     msg "Files extracted"
+    echo
 
-    HASH=$(grep -oP 'MD5:\s*\K[0-9a-fA-F]{32}' "$TEMP/$VIMM_FILE" 2>/dev/null)
-    CHASH=$(md5sum "$EXTRACTED_FILE" | cut -d' ' -f1)
+    for FILE in "$TEMP"/*; do
+        NAME=$(basename "$FILE")
 
-    if [ -z "$HASH" ]; then
-        clean3
-        error "Could not get game HASH!"
-        exit 1
-    elif [ -z "$CHASH" ]; then
-        clean3
-        error "Could not calculate game HASH!"
-        exit 1
-    fi
+        [ ! -f "$FILE" ] && continue
+        [ "$(basename "$FILE")" = "$VIMM_FILE" ] && continue
 
-    msg "Calculated HASH: ${BOLD}${GREEN}${CHASH}${RESET}"
-    msg "Expected HASH: ${BOLD}${GREEN}${HASH}${RESET}"
+        HASH=$(grep -F -A 3 -m 1 "$NAME" "$TEMP/$VIMM_FILE" | grep -oP 'MD5:\s*\K[0-9a-fA-F]{32}' | head -n 1)
 
-    if [ "$CHASH" == "$HASH" ]; then
-        msg "${BOLD}${GREEN}Hashes match!${RESET}"
-    else
-        clean3
-        error "Hashes do not match!"
-        exit 1
-    fi
+        CHASH=$(md5sum "$FILE" | cut -d' ' -f1)
+
+        if [ -z "$HASH" ]; then
+            clean3
+            error "Could not get game HASH!"
+            exit 1
+        elif [ -z "$CHASH" ]; then
+            clean3
+            error "Could not calculate game HASH!"
+            exit 1
+        fi
+
+        msg "Calculated ${BOLD}${YELLOW}$NAME${RESET} HASH: ${BOLD}${GREEN}${CHASH}${RESET}"
+        msg "Expected ${BOLD}${YELLOW}$NAME${RESET} HASH: ${BOLD}${GREEN}${HASH}${RESET}"
+
+        if [ "$CHASH" == "$HASH" ]; then
+            msg "${BOLD}${GREEN}Hashes match!${RESET}"
+        else
+            clean3
+            error "Hashes do not match!"
+            exit 1
+        fi
+        echo
+    done
 else
     if ! cd "$BASE_DIR"; then
         error "Could not access $BASE_DIR"
@@ -266,5 +290,4 @@ fi
 clean3
 
 # Say bye
-echo
 msg "${BOLD}${YELLOW}Bye bye!${RESET}"

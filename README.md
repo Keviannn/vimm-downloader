@@ -25,7 +25,7 @@ Vimm's Lair serves ROMs through a vault page that points to a dedicated download
 3. Resolves the final download URL and reads the file name and size from the HTTP headers.
 4. Lets you pick a target platform from your local ROM library.
 5. Downloads the file with a progress bar.
-6. Extracts the ROM, compares its MD5 against Vimm's official hash, and keeps only the compressed file.
+6. Extracts the ROM files and verifies **each one's MD5** against Vimm's official hash (multi-file ROMs like PSX .bin/.cue are fully supported) and keeps only the compressed file.
 
 ---
 
@@ -68,8 +68,8 @@ The script will:
 
  # Extracting files to calculate HASH...
  # Files extracted
- # Calculated HASH: ed1378bc12115f71209a77844965ba50
- # Expected HASH: ed1378bc12115f71209a77844965ba50
+ # Calculated Game Name (Europe).z64 HASH: ed1378bc12115f71209a77844965ba50
+ # Expected Game Name (Europe).z64 HASH: ed1378bc12115f71209a77844965ba50
  # Hashes match!
 
  # Bye bye!
@@ -94,7 +94,7 @@ The script relies on the following programs being installed and available in `PA
 | **`md5sum`**    | Computing the MD5 hash of the extracted ROM.          |
 | **`find` / `head`** | Locating the extracted ROM inside the temp folder. |
 | **`cut`**       | Isolating the MD5 value from `md5sum` output.         |
-| **`sed` / `xargs`** | Output formatting (platform listing, size truncation). |
+| **sed / xargs** | Output formatting (platform listing). |
 | **`ls`**        | Listing directories to show available platforms.      |
 
 > **Note:** `grep` must be the GNU version supporting the `-P` (Perl regex) option, e.g. `\K`.
@@ -116,11 +116,11 @@ The script is tailored to Vimm's Lair as it exists today. It assumes:
 
 ### System & environment
 - **Designed for a RomM library** — the script assumes the [RomM](https://romm.app) server folder structure: `BASE_DIR` contains one subdirectory per platform (RomM collection), and game files are stored directly inside them.
-- **No spaces in file/folder names** — platform folders are expected to be space-free, following the RomM naming standard.
+- **Space-free platform folders but space-friendly game files** — platform folders must be space-free (RomM naming standard), but game file names may contain spaces and the script handles them.
 - **`BASE_DIR` exists and is writable** — both it and its platform subdirectories require read/write permissions.
 
 ### Vimm's Lair
 - **Hash file format is strict** — `MD5:` followed by 32 hex characters on the same line, inside the `Vimm's Lair.txt` file that ships with the archive. Variations like `md5:`, `MD5 =` are not supported as they are not expected.
 - **No session cookie required** — the download server answers without the vault session cookie (as observed). If Vimm ever requires one, the download fails.
 - **Only `.zip` and `.7z` are supported** — any other file format triggers a "Filetype not supported" error and aborts the download as they are not expected.
-- **Single-file archives** — the downloaded `.zip`/`.7z` must contain **exactly one ROM**, sharing the same base name as the archive (e.g. `Paper Mario (USA).zip` → `Paper Mario (USA).z64`). Archives with multiple files, subfolders, or mismatched names are not handled (Like PSX disks that come with other stuff but I haven't tried yet).
+- **One MD5 entry per media file** — Vimm's Lair.txt lists the MD5 of **each** file inside the archive. The script verifies every extracted file against its own entry.
