@@ -18,7 +18,7 @@ The current design, because of Vimm's bot protection and my own principles, only
 
 Vimm's Lair serves ROMs through a vault page that points to a dedicated download server URL (`dlX.vimm.net`). This script automates the whole flow:
 
-1. Asks the user for the Vault's game ID, the download server ID and the download server game ID.
+1. Asks the user for the download server ID and the download server game ID.
 2. Resolves the download URL and reads the file name and size from the HTTP headers.
 3. Lets you pick a target platform from your local ROM library.
 4. Downloads the file with a progress bar.
@@ -30,13 +30,7 @@ Vimm's Lair serves ROMs through a vault page that points to a dedicated download
 
 ## Use Case
 
-You have a ROM library organized by platform (e.g. `/home/user/emu/library/roms/n64`). You find the game you want on Vimm's Lair and copy the vault ID from the URL:
-
-```
-https://vimm.net/vault/12345
-```
-
-Then inspect the download button and get the server and new game IDs:
+You have a ROM library organized by platform (e.g. `/home/user/emu/library/roms/n64`). You find the game you want on Vimm's Lair, inspect the download button and get the server and new game IDs:
 
 ``` html
 <form action="//dl3.vimm.net/" method="POST" id="dl-form" onsubmit="return submitDL(this, 'dialog3')">
@@ -61,33 +55,32 @@ The script will:
  ╚═══════════════════════════════════╝
 
  # Input download server ID: 3
- # Input download server game ID: 43986
+ # Input download server game ID: 30832
+ # Does the game have different formats? (y/n): y
+ # Input the format number selected (0, 1, 2...): 2
+ # Format 2 selected
 
- # Fetching game information from https://dl3.vimm.net/?mediaId=43986...
- # Silent Hill (Europe) (En,Fr,De,Es,It).7z 243MiB
+ # Fetching game information from https://dl3.vimm.net/?alt=2&mediaId=30832...
+ # Legend of Zelda, The - The Wind Waker (Europe) (En,Fr,De,Es,It).7z 718MiB
 
  # These are your current platforms:
      3ds gb gba n64
-     nds nes new-nintendo-3ds nintendo-dsi
-     ps2 psx switch
+     nds nes new-nintendo-3ds ngc
+     nintendo-dsi ps2 psx switch
 
- # Select the platform: psx
+ # Select the platform: ngc
 
- # Downloading Silent Hill (Europe) (En,Fr,De,Es,It).7z...
-    242MiB/243MiB [==========================================>] 100% [7.66MiB/s]
+ # Downloading Legend of Zelda, The - The Wind Waker (Europe) (En,Fr,De,Es,It).7z...
+    718MiB/718MiB [==========================================>] 100% [8.46MiB/s]
 
- # Calculating hash for Silent Hill (Europe) (En,Fr,De,Es,It).bin...
- # Calculated hash is 980eaef02b5d8476964d9d37ffaa01cc
- # Expected hash is 980eaef02b5d8476964d9d37ffaa01cc
- # They match!
-
- # Calculating hash for Silent Hill (Europe) (En,Fr,De,Es,It).cue...
- # Calculated hash is 52991ae412eb216626250f6a425e18a8
+ # Calculating hash for Legend of Zelda, The - The Wind Waker (Europe) (En,Fr,De,Es,It).rvz...
+ # Calculated hash is 5395ed04c9441e86c2237a64cc41c352
  # Expected hash is empty
  # They don't match!
 
  # Bye bye!
 ```
+> For Game Cube games the provided hash is for the .iso file so, in this case, they do not match.
 ---
 
 ## Requirements
