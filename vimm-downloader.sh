@@ -167,7 +167,7 @@ if [ -f "$FILENAME" ]; then
     fi
 
     # Im so proud of this piece of code right here
-    7z l "$FILENAME" | grep -oP '^[0-9-]+\s+[0-9:]+\s+\S+\s+\d+\s+\d+\s+\K.*\.[a-zA-Z]+$' | grep -v '\.txt$' | while read -r LINE; do
+    7z l "$FILENAME" | grep -oP '^[0-9-]+\s+[0-9:]+\s+\S+\s+\d+\s+\d+\s+\K.*\.[a-zA-Z0-9]+$' | grep -v '\.txt$' | while read -r LINE; do
         FILE="${LINE##*/}"
         msg "Calculating hash for $(filename $FILE)..."
 
