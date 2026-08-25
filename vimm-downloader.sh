@@ -61,10 +61,25 @@ if ! read -r MEDIA_ID || [ -z "$MEDIA_ID" ] || ! [[ "$MEDIA_ID" =~ ^[0-9]+$ ]]; 
     exit 1
 fi
 
-MEDIA_URL="https://dl$SERVER_ID.vimm.net/?mediaId=$MEDIA_ID"
+FORMAT=""
+prompt "Does the game have different formats? (y/n): "
+if read -r ANSWER && [[ "$ANSWER" =~ ^[yY]$ ]]; then
+    prompt "Input the format number selected (0, 1, 2...): "
+    if ! read -r FORMAT || [ -z "$FORMAT" ] || ! [[ "$FORMAT" =~ ^[0-9]+$ ]]; then
+        error "Format value is not valid!"
+        exit 1
+    fi
+    msg "Format $(info $FORMAT) selected"
+fi
+
+if [ -n "$FORMAT" ]; then
+    MEDIA_URL="https://dl$SERVER_ID.vimm.net/?alt=$FORMAT&mediaId=$MEDIA_ID"
+else
+    MEDIA_URL="https://dl$SERVER_ID.vimm.net/?mediaId=$MEDIA_ID"
+fi
 
 echo
-msg "Fetching game information from $(info "https://dl$SERVER_ID.vimm.net/?mediaId=$MEDIA_ID"...)"
+msg "Fetching game information from $(info "$MEDIA_URL"...)"
 
 # Get final URL and game name and size
 RESPONSE=$(
