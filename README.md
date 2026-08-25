@@ -60,7 +60,6 @@ The script will:
  ║          Vimm's Downloader        ║
  ╚═══════════════════════════════════╝
 
- # Input vault game ID: 234234
  # Input download server ID: 3
  # Input download server game ID: 43986
 
