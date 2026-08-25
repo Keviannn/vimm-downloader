@@ -10,32 +10,20 @@ BOLD='\033[1m'
 
 BASE_DIR="path/to/library/roms"
 
-PAGE=".page"
-HEADER=".header"
-TEMP="./.temp"
-
 VIMM_FILE="Vimm's Lair.txt"
 
 # Helping functions
-error() {
-	echo -e "${BOLD} #${RED} ERROR: "$*"${RESET}" >&2
-} 
-
 msg() {
 	echo -e "${BOLD} #${RESET} $*"
+} 
+
+error() {
+    msg "${BOLD}${RED}ERROR: "$*"${RESET}"
 } 
 
 prompt() {
 	echo -en "${BOLD} #${RESET} $*"
 } 
-
-clean() {
-    rm -f "$PAGE"
-}
-
-clean2() {
-    rm -f "$PAGE" "$HEADER"
-}
 
 filename() {
     echo -en "${BOLD}${YELLOW}$*${RESET}"
@@ -45,13 +33,8 @@ info() {
     echo -en "${BOLD}${GREEN}$*${RESET}"
 }
 
-clean3() {
-    [ -n "$TEMP" ] && rm -rf "$TEMP"
-    if ! cd "$BASE_DIR"; then
-        error "Could not access $BASE_DIR"
-        exit 1
-    fi
-    clean2
+fail() {
+    echo -en "${BOLD}${RED}$*${RESET}"
 }
 
 # Start program
@@ -67,7 +50,6 @@ echo -e " ${BOLD}╚════════════════════
 # Get ids from user
 prompt "Input vault game ID: "
 if ! read -r VAULT_ID || [ -z "$VAULT_ID" ] || ! [[ "$VAULT_ID" =~ ^[0-9]+$ ]]; then
-    clean2
 	error "Vault game ID is not valid!"
     exit 1
 fi
@@ -76,14 +58,12 @@ VAULT_URL="https://vimm.net/vault/$VAULT_ID"
 
 prompt "Input download server ID: "
 if ! read -r SERVER_ID || [ -z "$SERVER_ID" ] || ! [[ "$SERVER_ID" =~ ^[0-9]+$ ]]; then
-    clean2
 	error "Server ID is not valid!"
     exit 1
 fi
 
 prompt "Input download server game ID: "
 if ! read -r MEDIA_ID || [ -z "$MEDIA_ID" ] || ! [[ "$MEDIA_ID" =~ ^[0-9]+$ ]]; then
-    clean2
 	error "Media ID is not valid!"
     exit 1
 fi
@@ -91,36 +71,42 @@ fi
 MEDIA_URL="https://dl$SERVER_ID.vimm.net/?mediaId=$MEDIA_ID"
 
 echo
-msg "Fetching game information from $(info "https://dl$SERVER_ID.vimm.net/?mediaId=$MEDIA_ID...")"
+msg "Fetching game information from $(info "https://dl$SERVER_ID.vimm.net/?mediaId=$MEDIA_ID"...)"
 
 # Get final URL and game name and size
-HTTP_CODE2=$(
+RESPONSE=$(
     curl \
         -s \
         -I \
-        -o $HEADER \
+        -D - \
+        -o /dev/null \
         -w "%{http_code}" \
         -H "Referer: $VAULT_URL" \
         -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0" \
         $MEDIA_URL
 )
 
-if [ -z $HTTP_CODE2 ] || [ $HTTP_CODE2 -ne 200 ]; then
-    clean2
-	error "Connection error to file: ${HTTP_CODE2}"
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+HEADER=$(echo "$RESPONSE" | sed '$d')
+
+if [ -z $HTTP_CODE ] || [ $HTTP_CODE -ne 200 ]; then
+	error "Connection error to file: ${HTTP_CODE}"
+    exit 1
+fi
+
+if [ -z "$HEADER" ]; then
+	error "Could not get file headers!"
     exit 1
 fi
 
 # Get and print game information
-FILENAME=$(grep -oP 'filename="\K[^"]+' $HEADER 2>/dev/null)
-FILESIZE=$(grep -oP 'Content-Length:\s*\K\d+' $HEADER 2>/dev/null)
+FILENAME=$(grep -oP 'filename="\K[^"]+' <<< "$HEADER")
+FILESIZE=$(grep -oP 'Content-Length:\s*\K\d+' <<< "$HEADER")
 
 if [ -z "$FILENAME" ]; then
-    clean
 	error "Could not get game name!"
     exit 1
 elif [ -z "$FILESIZE" ]; then
-    clean
     error "Could not get game size!"
     exit 1
 fi
@@ -149,7 +135,6 @@ ls --color=always | xargs -n 4 | sed 's/^/     /'
 echo
 prompt "Select the platform: "
 if ! read -r PLATFORM || [ -z "$PLATFORM" ] || [ ! -e "$PLATFORM" ]; then
-    clean2
 	error "Platform is not valid!"
     exit 1
 fi
@@ -160,7 +145,7 @@ fi
 
 # Download game and add format with pv
 echo
-msg "Downloading $(filename $FILENAME)"
+msg "Downloading $(filename $FILENAME)..."
 curl \
     -s \
     -f \
@@ -172,12 +157,7 @@ curl \
 
 STATUS=$?
 if [ $STATUS -ne 0 ]; then
-    if ! cd "$BASE_DIR"; then
-        error "Could not access $BASE_DIR"
-        exit 1
-    fi
     rm -f "$FILENAME"
-    clean2
     error "One of the 100 errors in curl occured: $STATUS!"   # Not serious error msg i know
     exit 1
 fi
@@ -185,100 +165,41 @@ fi
 # Check hashes
 if [ -f "$FILENAME" ]; then
     echo
-    msg "Extracting files to calculate HASH..."
 
-    if ! mkdir -p "$TEMP"; then
-        clean3
-        error "Could not create $TEMP"
+    TXT=$(7z e -so "$FILENAME" "$VIMM_FILE")
+
+    if [ -z "$TXT" ]; then
+        error "No $VIMM_FILE in $(filename $FILENAME)!"
         exit 1
     fi
 
-    case ${FILENAME##*.} in
-        zip)
-            unzip -qq -j -o "$FILENAME" -d $TEMP
-            if [ $? -ne 0 ]; then
-                clean3
-                error "Could not extract files!"
-                exit 1
-            fi
-            ;;
-        7z)
-            7z e "$FILENAME" -o$TEMP -y -bso0 -bsp0
-            if [ $? -ne 0 ]; then
-                clean3
-                error "Could not extract files!"
-                exit 1
-            fi
-            ;;
-        *)
-            clean3
-            error "Filetype not supported!"
-            exit 1
-            ;;
-    esac
+    # Im so proud of this piece of code right here
+    7z l "$FILENAME" | grep -oP '^[0-9-]+\s+[0-9:]+\s+\S+\s+\d+\s+\d+\s+\K.*\.[a-zA-Z]+$' | grep -v '\.txt$' | while read -r LINE; do
+        FILE="${LINE##*/}"
+        msg "Calculating hash for $(filename $FILE)..."
 
+        CHASH=$(7z e "$FILENAME" -so "$LINE" | md5sum | cut -d' ' -f1)
+        msg "Calculated hash is $(info $CHASH)"
 
-    EXTRACTED_FILES=$(find "$TEMP" -type f ! -name "$VIMM_FILE")
-
-    if [ -z "$EXTRACTED_FILES" ]; then
-        clean3
-        error "Extracted files $EXTRACTED_FILES not found!"
-        exit 1
-    fi
-
-    if [ ! -f "$TEMP/$VIMM_FILE" ]; then
-        clean3
-        error "Could not find HASH file: $TEMP/$VIMM_FILE"
-        exit 1
-    fi
-
-    msg "Files extracted"
-    echo
-
-    for FILE in "$TEMP"/*; do
-        NAME=$(basename "$FILE")
-
-        [ ! -f "$FILE" ] && continue
-        [ "$(basename "$FILE")" = "$VIMM_FILE" ] && continue
-
-        HASH=$(grep -F -A 3 -m 1 "$NAME" "$TEMP/$VIMM_FILE" | grep -oP 'MD5:\s*\K[0-9a-fA-F]{32}' | head -n 1)
-
-        CHASH=$(md5sum "$FILE" | cut -d' ' -f1)
+        HASH=$(grep -F -A 3 -m 1 "$FILE" <<< "$TXT" | grep -oP 'MD5:\s*\K[0-9a-fA-F]{32}')
 
         if [ -z "$HASH" ]; then
-            clean3
-            error "Could not get $(filename "$NAME") HASH form HASH file!"
-            exit 1
-        elif [ -z "$CHASH" ]; then
-            clean3
-            error "Could not calculate $(filename "$NAME") HASH!"
-            exit 1
+            msg "Expected hash is $(fail "empty")"
+        else
+            msg "Expected hash is $(info $HASH)"
         fi
 
-        msg "Calculated $(filename "$NAME") HASH: $(info "$CHASH")"
-        msg "Expected $(filename "$NAME") HASH: $(info "$HASH")"
-
-        if [ "$CHASH" == "$HASH" ]; then
-            msg "$(info "Hashes match!")"
+        if [ "$HASH" == "$CHASH" ]; then
+            msg "$(info "They match!")"
         else
-            clean3
-            error "Hashes do not match!"
-            exit 1
+            msg "$(fail "They don't match!")"
         fi
         echo
     done
 else
-    if ! cd "$BASE_DIR"; then
-        error "Could not access $BASE_DIR"
-        exit 1
-    fi
-    clean2
     error "File $(filename $FILENAME) not found, can't calculate hash!"
     exit 1
 fi
-
-# Clean temp files
-clean3
 
 # Say bye
 msg "$(filename "Bye bye!")"
