@@ -10,6 +10,7 @@ BOLD='\033[1m'
 
 BASE_DIR="path/to/library/roms"
 
+VAULT_URL="https://vimm.net/vault/"
 VIMM_FILE="Vimm's Lair.txt"
 
 # Helping functions
@@ -48,14 +49,6 @@ echo -e " ${BOLD}║          ${RESET}${BOLD}${RED}Vimm's${RESET} ${BOLD}Downloa
 echo -e " ${BOLD}╚═══════════════════════════════════╝${RESET}\n"
 
 # Get ids from user
-prompt "Input vault game ID: "
-if ! read -r VAULT_ID || [ -z "$VAULT_ID" ] || ! [[ "$VAULT_ID" =~ ^[0-9]+$ ]]; then
-	error "Vault game ID is not valid!"
-    exit 1
-fi
-
-VAULT_URL="https://vimm.net/vault/$VAULT_ID"
-
 prompt "Input download server ID: "
 if ! read -r SERVER_ID || [ -z "$SERVER_ID" ] || ! [[ "$SERVER_ID" =~ ^[0-9]+$ ]]; then
 	error "Server ID is not valid!"
