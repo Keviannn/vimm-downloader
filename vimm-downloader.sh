@@ -37,6 +37,14 @@ clean2() {
     rm -f "$PAGE" "$HEADER"
 }
 
+filename() {
+    echo -en "${BOLD}${YELLOW}$*${RESET}"
+}
+
+info() {
+    echo -en "${BOLD}${GREEN}$*${RESET}"
+}
+
 clean3() {
     [ -n "$TEMP" ] && rm -rf "$TEMP"
     if ! cd "$BASE_DIR"; then
@@ -56,49 +64,34 @@ echo -e "\n ${BOLD}╔═══════════════════�
 echo -e " ${BOLD}║          ${RESET}${BOLD}${RED}Vimm's${RESET} ${BOLD}Downloader        ║${RESET}"
 echo -e " ${BOLD}╚═══════════════════════════════════╝${RESET}\n"
 
-if [ $# -ne 1 ]; then
-	error "Vault ID not recieved as argument!"
-	exit 1
-fi
-
-# Get vault html
-VAULT_URL="https://vimm.net/vault/$1"
-
-msg "Connecting to ${BOLD}${GREEN}$VAULT_URL${RESET}..."
-
-HTTP_CODE1=$(
-    curl \
-        -s \
-        -o $PAGE \
-        -w "%{http_code}" \
-        $VAULT_URL
-)
-
-if [ -z $HTTP_CODE1 ] || [ $HTTP_CODE1 -ne 200 ]; then
+# Get ids from user
+prompt "Input vault game ID: "
+if ! read -r VAULT_ID || [ -z "$VAULT_ID" ] || ! [[ "$VAULT_ID" =~ ^[0-9]+$ ]]; then
     clean2
-	error "Could not get vault page: ${HTTP_CODE1:-0}!"
+	error "Vault game ID is not valid!"
     exit 1
 fi
 
-# Find MEDIA_ID and SERVER_ID in the html
-MEDIA_ID=$(grep -oP 'mediaId"\s*value="\K\d+' $PAGE 2>/dev/null)
-SERVER_ID=$(grep -oP 'action="//dl\K\d+' $PAGE 2>/dev/null)
+VAULT_URL="https://vimm.net/vault/$VAULT_ID"
 
-if [ -z "$MEDIA_ID" ]; then
-    clean
-	error "Could not get download server ID!"
-    exit 1
-elif [ -z "$SERVER_ID" ]; then
-    clean
-    error "Could not get download server URL ID!"
+prompt "Input download server ID: "
+if ! read -r SERVER_ID || [ -z "$SERVER_ID" ] || ! [[ "$SERVER_ID" =~ ^[0-9]+$ ]]; then
+    clean2
+	error "Server ID is not valid!"
     exit 1
 fi
 
-msg "Fetched game URL\n"
+prompt "Input download server game ID: "
+if ! read -r MEDIA_ID || [ -z "$MEDIA_ID" ] || ! [[ "$MEDIA_ID" =~ ^[0-9]+$ ]]; then
+    clean2
+	error "Media ID is not valid!"
+    exit 1
+fi
 
 MEDIA_URL="https://dl$SERVER_ID.vimm.net/?mediaId=$MEDIA_ID"
 
-msg "Fetching game information from ${BOLD}${GREEN}https://dl$SERVER_ID.vimm.net/?mediaId=$MEDIA_ID${RESET}..."
+echo
+msg "Fetching game information from $(info "https://dl$SERVER_ID.vimm.net/?mediaId=$MEDIA_ID...")"
 
 # Get final URL and game name and size
 HTTP_CODE2=$(
@@ -148,7 +141,7 @@ else
     FILESIZE_SIMPLE="${VALUE}${SUFFIX}"
 fi
 
-msg "${BOLD}${YELLOW}$FILENAME $FILESIZE_SIMPLE${RESET}\n"
+msg "$(filename $FILENAME $FILESIZE_SIMPLE)\n"
 
 # Set download directory
 msg "These are your current platforms:"
@@ -165,11 +158,9 @@ if ! cd "$PLATFORM"; then
     exit 1
 fi
 
-
-
 # Download game and add format with pv
 echo
-msg "Downloading ${BOLD}${YELLOW}$FILENAME${RESET}"
+msg "Downloading $(filename $FILENAME)"
 curl \
     -s \
     -f \
@@ -256,19 +247,19 @@ if [ -f "$FILENAME" ]; then
 
         if [ -z "$HASH" ]; then
             clean3
-            error "Could not get game HASH!"
+            error "Could not get $(filename "$NAME") HASH form HASH file!"
             exit 1
         elif [ -z "$CHASH" ]; then
             clean3
-            error "Could not calculate game HASH!"
+            error "Could not calculate $(filename "$NAME") HASH!"
             exit 1
         fi
 
-        msg "Calculated ${BOLD}${YELLOW}$NAME${RESET} HASH: ${BOLD}${GREEN}${CHASH}${RESET}"
-        msg "Expected ${BOLD}${YELLOW}$NAME${RESET} HASH: ${BOLD}${GREEN}${HASH}${RESET}"
+        msg "Calculated $(filename "$NAME") HASH: $(info "$CHASH")"
+        msg "Expected $(filename "$NAME") HASH: $(info "$HASH")"
 
         if [ "$CHASH" == "$HASH" ]; then
-            msg "${BOLD}${GREEN}Hashes match!${RESET}"
+            msg "$(info "Hashes match!")"
         else
             clean3
             error "Hashes do not match!"
@@ -282,7 +273,7 @@ else
         exit 1
     fi
     clean2
-    error "File $FILENAME not found, can't calculate hash!"
+    error "File $(filename $FILENAME) not found, can't calculate hash!"
     exit 1
 fi
 
@@ -290,4 +281,4 @@ fi
 clean3
 
 # Say bye
-msg "${BOLD}${YELLOW}Bye bye!${RESET}"
+msg "$(filename "Bye bye!")"
